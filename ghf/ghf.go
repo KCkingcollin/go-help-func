@@ -9,10 +9,6 @@ import (
 	"github.com/go-gl/gl/v4.6-core/gl"
 )
 
-type ShaderID uint32
-type ProgramID uint32
-
-
 func PrintVersionGL() {
     version := gl.GoStr(gl.GetString(gl.VERSION))
     fmt.Println("OpenGL Version", version)
