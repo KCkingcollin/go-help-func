@@ -5,6 +5,5 @@ import {
 }
 
 func GetVersionGL() {
-    version := gl.GoStr(gl.GetString(gl.VERSION))
-    fmt.Println("OpenGL Version", version)
+    return version := gl.GoStr(gl.GetString(gl.VERSION))
 }
