@@ -9,6 +9,10 @@ import (
 	"github.com/go-gl/gl/v4.6-core/gl"
 )
 
+type ShaderID uint32
+type ProgramID uint32
+
+
 func PrintVersionGL() {
     version := gl.GoStr(gl.GetString(gl.VERSION))
     fmt.Println("OpenGL Version", version)
@@ -22,20 +26,20 @@ func LoadFile(file string) string {
     return string(data)
 }
 func CreateProgram(vertexShader, fragmentShader uint32) (uint32, error) {
-    shaderProgram := gl.CreateProgram()
-    gl.AttachShader(shaderProgram, vertexShader)
-    gl.AttachShader(shaderProgram, fragmentShader)
-    gl.LinkProgram(shaderProgram)
+    ProgramID := gl.CreateProgram()
+    gl.AttachShader(ProgramID, vertexShader)
+    gl.AttachShader(ProgramID, fragmentShader)
+    gl.LinkProgram(ProgramID)
     var success int32
-    gl.GetProgramiv(shaderProgram, gl.LINK_STATUS, &success)
+    gl.GetProgramiv(ProgramID, gl.LINK_STATUS, &success)
     if success == gl.FALSE {
         var logLength int32
-        gl.GetProgramiv(shaderProgram, gl.INFO_LOG_LENGTH, &logLength)
+        gl.GetProgramiv(ProgramID, gl.INFO_LOG_LENGTH, &logLength)
         log := strings.Repeat("\x00", int(logLength+1))
-        gl.GetProgramInfoLog(shaderProgram, logLength, nil, gl.Str(log))
-        return shaderProgram, errors.New(log)
+        gl.GetProgramInfoLog(ProgramID, logLength, nil, gl.Str(log))
+        return ProgramID, errors.New(log)
     }
-    return shaderProgram, nil
+    return ProgramID, nil
 }
 
 func CreateVertexShader(ShaderSource string) (uint32, error) {
@@ -47,19 +51,19 @@ func CreateFragmentShader(ShaderSource string) (uint32, error) {
 }
 
 func createShader(ShaderSource string, ShaderType uint32) (uint32, error) {
-    Shader := gl.CreateShader(ShaderType)
+    ShaderID:= gl.CreateShader(ShaderType)
     csource, free := gl.Strs(ShaderSource)
-    gl.ShaderSource(Shader, 1, csource, nil)
+    gl.ShaderSource(ShaderID, 1, csource, nil)
     free()
-    gl.CompileShader(Shader)
+    gl.CompileShader(ShaderID)
     var status int32
-    gl.GetShaderiv(Shader, gl.COMPILE_STATUS, &status)
+    gl.GetShaderiv(ShaderID, gl.COMPILE_STATUS, &status)
     if status == gl.FALSE {
         var logLength int32
-        gl.GetShaderiv(Shader, gl.INFO_LOG_LENGTH, &logLength)
+        gl.GetShaderiv(ShaderID, gl.INFO_LOG_LENGTH, &logLength)
         log := strings.Repeat("\x00", int(logLength+1))
-        gl.GetShaderInfoLog(Shader, logLength, nil, gl.Str(log))
-        return Shader, errors.New(log)
+        gl.GetShaderInfoLog(ShaderID, logLength, nil, gl.Str(log))
+        return ShaderID, errors.New(log)
     }
-    return Shader, nil 
+    return ShaderID, nil 
 }
