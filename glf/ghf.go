@@ -3,7 +3,6 @@ package glf
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/KCkingcollin/go-help-func/ghf"
@@ -17,14 +16,6 @@ func PrintVersionGL() {
     if Verbose {
         fmt.Println("OpenGL Version", version)
     }
-}
-
-func LoadFile(path string) string {
-    data, err := os.ReadFile(path)
-    if err != nil && Verbose {
-        fmt.Println(err)
-    }
-    return string(data)
 }
 
 func CreateProgram(vertPath, fragPath string) (uint32, error) {
@@ -61,12 +52,12 @@ func CreateProgram(vertPath, fragPath string) (uint32, error) {
 }
 
 func CreateVertexShader(shaderFile string) (uint32, error) {
-    ShaderSource := LoadFile(shaderFile) + "\x00"
+    ShaderSource := ghf.LoadFile(shaderFile) + "\x00"
     return CreateShader(ShaderSource,  gl.VERTEX_SHADER)
 }
 
 func CreateFragmentShader(shaderFile string) (uint32, error) {
-    ShaderSource := LoadFile(shaderFile) + "\x00"
+    ShaderSource := ghf.LoadFile(shaderFile) + "\x00"
     return CreateShader(ShaderSource,  gl.FRAGMENT_SHADER)
 }
 

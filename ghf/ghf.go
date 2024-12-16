@@ -1,6 +1,9 @@
 package ghf
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 var Verbose bool = verbose()
 
@@ -12,5 +15,13 @@ func verbose() bool {
         }
     }
     return verbose
+}
+
+func LoadFile(path string) string {
+    data, err := os.ReadFile(path)
+    if err != nil && Verbose {
+        fmt.Println(err)
+    }
+    return string(data)
 }
 
