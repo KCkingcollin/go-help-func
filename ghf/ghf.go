@@ -56,12 +56,12 @@ func CreateProgram(vertPath, fragPath string) (uint32, error) {
 }
 
 func CreateVertexShader(shaderFile string) (uint32, error) {
-    ShaderSource := LoadFile(shaderFile)
+    ShaderSource := LoadFile(shaderFile) + "\x00"
     return CreateShader(ShaderSource,  gl.VERTEX_SHADER)
 }
 
 func CreateFragmentShader(shaderFile string) (uint32, error) {
-    ShaderSource := LoadFile(shaderFile)
+    ShaderSource := LoadFile(shaderFile) + "\x00"
     return CreateShader(ShaderSource,  gl.FRAGMENT_SHADER)
 }
 
