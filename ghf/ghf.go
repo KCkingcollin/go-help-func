@@ -5,37 +5,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/go-gl/gl/v4.6-core/gl"
 )
-
-type shaderInfo struct {
-    path string
-    modified time.Time 
-}
-
-var loadedShaders []shaderInfo
-
-func ResetLoadedShaders() {
-    loadedShaders = nil
-}
-
-func CheckShadersforChanges() bool {
-    for _, shaderInfo := range loadedShaders {
-        file, err := os.Stat(shaderInfo.path)
-        if err != nil {
-            fmt.Println(err)
-            return false
-        }
-        modTime := file.ModTime()
-        if !modTime.Equal(shaderInfo.modified) {
-            fmt.Println("Reloading shader: " + shaderInfo.path)
-            return true
-        }
-    }
-    return false
-}
 
 func PrintVersionGL() {
     version := gl.GoStr(gl.GetString(gl.VERSION))
@@ -56,7 +28,19 @@ func LoadFile(path string) string {
     return string(data)
 }
 
-func CreateProgram(vertexShader, fragmentShader uint32) (uint32, error) {
+func CreateProgram(vertPath, fragPath string) (uint32, error) {
+    vertexShader, err := CreateVertexShader(vertPath)
+    if err != nil {
+        fmt.Printf("Failed to compile vertex shader: %s \n", err)
+    } else {
+        println("Vertex shader compiled successfully")
+    }
+    fragmentShader, err := CreateFragmentShader(fragPath)
+    if err != nil {
+        fmt.Printf("Failed to compile fragment shader: %s \n", err)
+    } else {
+        println("Fragment shader compiled successfully")
+    }
     ProgramID := gl.CreateProgram()
     gl.AttachShader(ProgramID, vertexShader)
     gl.AttachShader(ProgramID, fragmentShader)
@@ -70,14 +54,20 @@ func CreateProgram(vertexShader, fragmentShader uint32) (uint32, error) {
         gl.GetProgramInfoLog(ProgramID, logLength, nil, gl.Str(log))
         return ProgramID, errors.New(log)
     }
-    return ProgramID, nil
+
+    gl.DeleteShader(vertexShader)
+    gl.DeleteShader(fragmentShader)
+
+    return ProgramID, err
 }
 
-func CreateVertexShader(ShaderSource string) (uint32, error) {
+func CreateVertexShader(shaderFile string) (uint32, error) {
+    ShaderSource := LoadFile(shaderFile)
     return CreateShader(ShaderSource,  gl.VERTEX_SHADER)
 }
 
-func CreateFragmentShader(ShaderSource string) (uint32, error) {
+func CreateFragmentShader(shaderFile string) (uint32, error) {
+    ShaderSource := LoadFile(shaderFile)
     return CreateShader(ShaderSource,  gl.FRAGMENT_SHADER)
 }
 
