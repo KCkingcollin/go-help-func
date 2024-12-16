@@ -19,12 +19,6 @@ func LoadFile(path string) string {
     if err != nil {
         fmt.Println(err)
     }
-    file, err := os.Stat(path)
-    if err != nil {
-        fmt.Println(err)
-    }
-    modTime := file.ModTime()
-    loadedShaders = append(loadedShaders, shaderInfo{path, modTime})
     return string(data)
 }
 
