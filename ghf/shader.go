@@ -34,7 +34,7 @@ func (shader *ShaderInfo) Use() {
 
 func GetModifiedTime(filePath string) time.Time {
         file, err := os.Stat(filePath)
-        if err != nil {
+        if err != nil && Verbose {
             fmt.Println(err)
         }
         return file.ModTime()
@@ -49,11 +49,15 @@ func CheckShadersforChanges() {
             fmt.Println("Reloading vertex and fragment shader: \n" + shader.vertexPath + "\n" + shader.fragmentPath)
             id, err := CreateProgram(shader.vertexPath, shader.fragmentPath)
             if err != nil {
-                fmt.Printf("Could not relink shader, %s \n", err)
+                if Verbose {
+                    fmt.Printf("Could not relink shader, %s \n", err)
+                }
                 shader.vertModified = GetModifiedTime(shader.vertexPath)
                 shader.fragModified = GetModifiedTime(shader.fragmentPath)
             } else {
-                fmt.Println("Relinked shader")
+                if Verbose {
+                    fmt.Println("Relinked shader")
+                }
                 gl.DeleteProgram(shader.id)
                 shader.id = id
                 shader.vertModified = GetModifiedTime(shader.vertexPath)

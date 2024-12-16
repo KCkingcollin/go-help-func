@@ -9,14 +9,28 @@ import (
 	"github.com/go-gl/gl/v4.6-core/gl"
 )
 
+var Verbose bool = verbose()
+
+func verbose() bool {
+    verbose := false
+    if len(os.Args) > 1 {
+        if os.Args[1] == "--verbose" || os.Args[1] == "-v" {
+            verbose = true
+        }
+    }
+    return verbose
+}
+
 func PrintVersionGL() {
     version := gl.GoStr(gl.GetString(gl.VERSION))
-    fmt.Println("OpenGL Version", version)
+    if Verbose {
+        fmt.Println("OpenGL Version", version)
+    }
 }
 
 func LoadFile(path string) string {
     data, err := os.ReadFile(path)
-    if err != nil {
+    if err != nil && Verbose {
         fmt.Println(err)
     }
     return string(data)
@@ -24,15 +38,15 @@ func LoadFile(path string) string {
 
 func CreateProgram(vertPath, fragPath string) (uint32, error) {
     vertexShader, err := CreateVertexShader(vertPath)
-    if err != nil {
+    if err != nil && Verbose {
         fmt.Printf("Failed to compile vertex shader: %s \n", err)
-    } else {
+    } else if Verbose {
         println("Vertex shader compiled successfully")
     }
     fragmentShader, err := CreateFragmentShader(fragPath)
-    if err != nil {
+    if err != nil && Verbose {
         fmt.Printf("Failed to compile fragment shader: %s \n", err)
-    } else {
+    } else if Verbose {
         println("Fragment shader compiled successfully")
     }
     ProgramID := gl.CreateProgram()
