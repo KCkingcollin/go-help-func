@@ -1,3 +1,4 @@
+// Shader GL Helper Functions
 package glf
 
 import (
@@ -26,6 +27,11 @@ func NewShaderProgram(vertexPath, fragmentPath string) (*ShaderInfo, error) {
     result := &ShaderInfo{id, vertexPath, fragmentPath, GetModifiedTime(vertexPath), GetModifiedTime(fragmentPath)}
     loadedShaders[id] = result
     return result, nil
+}
+
+func (shader *ShaderInfo) SetFloat(name string, f float32) {
+    location := gl.GetUniformLocation(shader.id, gl.Str(name + "\x00"))
+    gl.Uniform1f(location, f)
 }
 
 func (shader *ShaderInfo) Use() {

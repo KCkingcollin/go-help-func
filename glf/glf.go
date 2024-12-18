@@ -1,3 +1,4 @@
+// GL Helper Functions
 package glf
 
 import (
@@ -79,11 +80,7 @@ func CreateShader(ShaderSource string, ShaderType uint32) (uint32, error) {
     return ShaderID, nil 
 }
 
-func BufferDataFloat(target uint32, data []float32, usage uint32) {
-    gl.BufferData(target, len(data)*4, gl.Ptr(data), usage)
-}
-
-func BufferDataInt(target uint32, data []uint32, usage uint32) {
+func BufferData[T any](target uint32, data []T, usage uint32) {
     gl.BufferData(target, len(data)*4, gl.Ptr(data), usage)
 }
 

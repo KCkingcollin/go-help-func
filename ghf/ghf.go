@@ -1,3 +1,4 @@
+// Main Helper Functions
 package ghf
 
 import (
