@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-gl/gl/v4.6-core/gl"
+	"github.com/go-gl/mathgl/mgl32"
 )
 
 type ShaderInfo struct {
@@ -32,6 +33,12 @@ func NewShaderProgram(vertexPath, fragmentPath string) (*ShaderInfo, error) {
 func (shader *ShaderInfo) SetFloat(name string, f float32) {
     location := gl.GetUniformLocation(shader.id, gl.Str(name + "\x00"))
     gl.Uniform1f(location, f)
+}
+
+func (shader *ShaderInfo) SetMat4(name string, mat mgl32.Mat4) {
+    location := gl.GetUniformLocation(shader.id, gl.Str(name + "\x00"))
+    m4 := [16]float32(mat)
+    gl.UniformMatrix4fv(location, 1, false, &m4[0])
 }
 
 func (shader *ShaderInfo) Use() {
