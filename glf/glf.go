@@ -4,6 +4,8 @@ package glf
 import (
 	"errors"
 	"fmt"
+	"image/png"
+	"os"
 	"strings"
 
 	"github.com/KCkingcollin/go-help-func/ghf"
@@ -17,6 +19,62 @@ func PrintVersionGL() {
     if Verbose {
         fmt.Println("OpenGL Version", version)
     }
+}
+
+func LoadTexture(filename string) uint32 {
+	infile, err := os.Open(filename)
+	if err != nil {
+		panic(err)
+	}
+	defer infile.Close()
+
+	img, err := png.Decode(infile)
+	if err != nil {
+		panic(err)
+	}
+
+	w := img.Bounds().Max.X
+	h := img.Bounds().Max.Y
+
+	pixels := make([]byte, w*h*4)
+	bIndex := 0
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			r, g, b, a := img.At(x, y).RGBA()
+			pixels[bIndex] = byte(r / 256)
+			bIndex++
+			pixels[bIndex] = byte(g / 256)
+			bIndex++
+			pixels[bIndex] = byte(b / 256)
+			bIndex++
+			pixels[bIndex] = byte(a / 256)
+			bIndex++
+		}
+	}
+
+    texture := GenBindTexture()
+
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    
+    gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(w), int32(h), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixels))
+
+    gl.GenerateMipmap(gl.TEXTURE_2D)
+
+	return texture
+}
+
+func GenBindTexture() uint32 {
+    var texID uint32
+    gl.GenTextures(1, &texID)
+    gl.BindTexture(gl.TEXTURE_2D, texID)
+    return texID
+}
+
+func BindTexture(texID uint32) {
+    gl.BindTexture(gl.TEXTURE_2D, texID)
 }
 
 func CreateProgram(vertPath, fragPath string) (uint32, error) {
