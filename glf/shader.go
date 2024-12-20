@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"unsafe"
 
 	"github.com/go-gl/gl/v4.6-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
@@ -35,10 +36,13 @@ func (shader *ShaderInfo) SetFloat(name string, f float32) {
     gl.Uniform1f(location, f)
 }
 
-func (shader *ShaderInfo) SetMat4(name string, mat mgl32.Mat4) {
-    location := gl.GetUniformLocation(shader.id, gl.Str(name + "\x00"))
-    m4 := [16]float32(mat)
-    gl.UniformMatrix4fv(location, 1, false, &m4[0])
+func BindBufferSubDataMat4(split []mgl32.Mat4, UBOn uint32) {
+    for i := range split {
+        v := [16]float32(split[i])
+        gl.BindBuffer(gl.UNIFORM_BUFFER, UBOn)
+        gl.BufferSubData(gl.UNIFORM_BUFFER, i*4*16, 4*16, unsafe.Pointer(&v))
+        gl.BindBuffer(gl.UNIFORM_BUFFER, 1)
+    }
 }
 
 func (shader *ShaderInfo) Use() {
