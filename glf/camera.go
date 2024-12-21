@@ -1,9 +1,10 @@
+// Camera helper functions
 package glf
 
 import (
 	"math"
 
-	"github.com/go-gl/mathgl/mgl32"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 type Direction int 
@@ -16,21 +17,21 @@ const (
 )
 
 type Camera struct {
-    Position        mgl32.Vec3
-    Front           mgl32.Vec3
-    Up              mgl32.Vec3
-    Right           mgl32.Vec3
+    Position        mgl64.Vec3
+    Front           mgl64.Vec3
+    Up              mgl64.Vec3
+    Right           mgl64.Vec3
 
-    WorldUp         mgl32.Vec3
+    WorldUp         mgl64.Vec3
 
-    Yaw             float32
-    Pitch           float32
-    MovementAccel   float32
-    MouseSens       float32
-    Zoom            float32
+    Yaw             float64
+    Pitch           float64
+    MovementAccel   float64
+    MouseSens       float64
+    Zoom            float64
 }
 
-func NewCamera(camPosition, worldUp mgl32.Vec3, camYaw, camPitch, camAccel, mouseSens float32) *Camera {
+func NewCamera(camPosition, worldUp mgl64.Vec3, camYaw, camPitch, camAccel, mouseSens float64) *Camera {
     camera := Camera{}
     camera.Position = camPosition
     camera.WorldUp = worldUp
@@ -42,7 +43,7 @@ func NewCamera(camPosition, worldUp mgl32.Vec3, camYaw, camPitch, camAccel, mous
     return &camera
 }
 
-func (camera *Camera) UpdateCamera(direction Direction, deltaT, xoffset, yoffset float32) {
+func (camera *Camera) UpdateCamera(direction Direction, deltaT, xoffset, yoffset float64) {
     magnitude := camera.MovementAccel * deltaT
     switch direction {
     case Forward:
@@ -65,15 +66,15 @@ func (camera *Camera) UpdateCamera(direction Direction, deltaT, xoffset, yoffset
     camera.updateVectors()
 }
 
-func (camera *Camera) GetViewMatrix() mgl32.Mat4 {
+func (camera *Camera) GetViewMatrix() mgl64.Mat4 {
     center := camera.Position.Add(camera.Front)
-    return mgl32.LookAt(camera.Position.X(), camera.Position.Y(), camera.Position.Z(),  center.X(), center.Y(), center.Z(), camera.Up.X(), camera.Up.Y(), camera.Up.Z())
+    return mgl64.LookAt(camera.Position.X(), camera.Position.Y(), camera.Position.Z(),  center.X(), center.Y(), center.Z(), camera.Up.X(), camera.Up.Y(), camera.Up.Z())
 }
 
 func (camera *Camera) updateVectors() {
-    front := mgl32.Vec3{float32(math.Cos(float64(mgl32.DegToRad(camera.Yaw)) * math.Cos(float64(mgl32.DegToRad(camera.Pitch))))), 
-    float32(math.Sin(float64(mgl32.DegToRad(float32(camera.Pitch))))), 
-    float32(math.Sin(float64(mgl32.DegToRad(camera.Yaw)) * math.Cos(float64(mgl32.DegToRad(camera.Pitch))))), 
+    front := mgl64.Vec3{math.Cos(mgl64.DegToRad(camera.Yaw) * math.Cos(mgl64.DegToRad(camera.Pitch))), 
+    math.Sin(mgl64.DegToRad(camera.Pitch)), 
+    math.Sin(mgl64.DegToRad(camera.Yaw)) * math.Cos(mgl64.DegToRad(camera.Pitch)), 
     }
     camera.Front = front.Normalize()
     camera.Right = camera.Front.Cross(camera.WorldUp).Normalize()

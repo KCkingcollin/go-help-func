@@ -138,7 +138,15 @@ func CreateShader(ShaderSource string, ShaderType uint32) (uint32, error) {
     return ShaderID, nil 
 }
 
-func BufferData[T any](target uint32, data []T, usage uint32) {
+func BufferData[T float32](target uint32, data []T, usage uint32) {
+    // switch any(data).(type) {
+    // case []float32:
+    //     byteSize = 4
+    // case []float64:
+    //     byteSize = 8
+    // default:
+    //     panic("unsupported type for BufferData")
+    // }
     gl.BufferData(target, len(data)*4, gl.Ptr(data), usage)
 }
 

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 var Verbose bool = verbose()
@@ -28,14 +29,23 @@ func LoadFile(path string) string {
     return string(data)
 }
 
-func Mat4ToFloat32(mats []mgl32.Mat4) []float32 {
-	float32s := make([]float32, 0)
+func Mgl64to32Mat4Slice(m64 []mgl64.Mat4) []mgl32.Mat4 {
+    var ms32 mgl32.Mat4
+    m32 := make([]mgl32.Mat4, len(m64))
+    for i := range m64 {
+        ms64 := [16]float64(m64[i])
+        for j := range ms64 {
+            ms32[j] = float32(ms64[j])
+        }
+        m32[i] = ms32
+    }
+    return m32
+}
 
-	for _, mat := range mats {
-		for i := 0; i < 16; i++ {
-            float32s = append(float32s, mat[i])
-		}
-	}
-
-	return float32s
+func Mgl64to32Mat4(m64 mgl64.Mat4) mgl32.Mat4 {
+    m32 := make([]float32, 16)
+    for i := range [16]float64(m64) {
+        m32[i] = float32(m64[i])
+    }
+    return mgl32.Mat4(m32)
 }
