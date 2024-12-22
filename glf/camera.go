@@ -36,8 +36,8 @@ func NewCamera(camPosition, worldUp mgl64.Vec3, camYaw, camPitch, camAccel, mous
     camera.Position = camPosition
     camera.WorldUp = worldUp
     camera.Yaw = camYaw
-    camera.MovementAccel = camAccel
     camera.Pitch = camPitch
+    camera.MovementAccel = camAccel
     camera.MouseSens = mouseSens
     camera.updateVectors()
     return &camera
@@ -61,18 +61,24 @@ func (camera *Camera) UpdateCamera(direction Direction, deltaT, xoffset, yoffset
     yoffset *= camera.MouseSens
 
     camera.Yaw += xoffset
-    camera.Pitch += yoffset
+    camera.Pitch -= yoffset
 
+    if camera.Pitch > 90.0 {
+        camera.Pitch = 90.0
+    }
+    if camera.Pitch < -90.0 {
+        camera.Pitch = -90.0
+    }
     camera.updateVectors()
 }
 
 func (camera *Camera) GetViewMatrix() mgl64.Mat4 {
     center := camera.Position.Add(camera.Front)
-    return mgl64.LookAt(camera.Position.X(), camera.Position.Y(), camera.Position.Z(),  center.X(), center.Y(), center.Z(), camera.Up.X(), camera.Up.Y(), camera.Up.Z())
+    return mgl64.LookAt(camera.Position.X(), camera.Position.Y(), camera.Position.Z(), center.X(), center.Y(), center.Z(), camera.Up.X(), camera.Up.Y(), camera.Up.Z())
 }
 
 func (camera *Camera) updateVectors() {
-    front := mgl64.Vec3{math.Cos(mgl64.DegToRad(camera.Yaw) * math.Cos(mgl64.DegToRad(camera.Pitch))), 
+    front := mgl64.Vec3{math.Cos(mgl64.DegToRad(camera.Yaw)) * math.Cos(mgl64.DegToRad(camera.Pitch)), 
     math.Sin(mgl64.DegToRad(camera.Pitch)), 
     math.Sin(mgl64.DegToRad(camera.Yaw)) * math.Cos(mgl64.DegToRad(camera.Pitch)), 
     }
