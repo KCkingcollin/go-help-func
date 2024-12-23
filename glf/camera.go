@@ -31,6 +31,7 @@ type Camera struct {
     Zoom            float64
 }
 
+//Setup camera
 func NewCamera(camPosition, worldUp mgl64.Vec3, camYaw, camPitch, camAccel, mouseSens float64) *Camera {
     camera := Camera{}
     camera.Position = camPosition
@@ -43,6 +44,7 @@ func NewCamera(camPosition, worldUp mgl64.Vec3, camYaw, camPitch, camAccel, mous
     return &camera
 }
 
+//Update the rotation and position of the camera
 func (camera *Camera) UpdateCamera(direction Direction, deltaT, xoffset, yoffset float64) {
     magnitude := camera.MovementAccel * deltaT
     switch direction {
@@ -72,11 +74,13 @@ func (camera *Camera) UpdateCamera(direction Direction, deltaT, xoffset, yoffset
     camera.updateVectors()
 }
 
+//Get the looking matrix
 func (camera *Camera) GetViewMatrix() mgl64.Mat4 {
     center := camera.Position.Add(camera.Front)
     return mgl64.LookAt(camera.Position.X(), camera.Position.Y(), camera.Position.Z(), center.X(), center.Y(), center.Z(), camera.Up.X(), camera.Up.Y(), camera.Up.Z())
 }
 
+//Update camera orientation
 func (camera *Camera) updateVectors() {
     front := mgl64.Vec3{math.Cos(mgl64.DegToRad(camera.Yaw)) * math.Cos(mgl64.DegToRad(camera.Pitch)), 
     math.Sin(mgl64.DegToRad(camera.Pitch)), 

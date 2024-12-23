@@ -11,6 +11,7 @@ import (
 
 var Verbose bool = verbose()
 
+//Returns true if the user adds -v/--verbose option at start up
 func verbose() bool {
     verbose := false
     if len(os.Args) > 1 {
@@ -21,6 +22,7 @@ func verbose() bool {
     return verbose
 }
 
+//Load a file via path, and return it as a string
 func LoadFile(path string) string {
     data, err := os.ReadFile(path)
     if err != nil && Verbose {
@@ -29,6 +31,7 @@ func LoadFile(path string) string {
     return string(data)
 }
 
+//Converts a 64Mat4 slice to a 32Mat4 slice
 func Mgl64to32Mat4Slice(m64 []mgl64.Mat4) []mgl32.Mat4 {
     var ms32 mgl32.Mat4
     m32 := make([]mgl32.Mat4, len(m64))
@@ -42,6 +45,7 @@ func Mgl64to32Mat4Slice(m64 []mgl64.Mat4) []mgl32.Mat4 {
     return m32
 }
 
+//Converts a 64Mat4 to a 32Mat4
 func Mgl64to32Mat4(m64 mgl64.Mat4) mgl32.Mat4 {
     m32 := make([]float32, 16)
     for i := range [16]float64(m64) {

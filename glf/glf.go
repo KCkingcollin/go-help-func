@@ -14,6 +14,7 @@ import (
 
 var Verbose bool = ghf.Verbose
 
+//Prints OpenGL version information
 func PrintVersionGL() {
     version := gl.GoStr(gl.GetString(gl.VERSION))
     if Verbose {
@@ -21,6 +22,7 @@ func PrintVersionGL() {
     }
 }
 
+//Load a RGBA texture file via path, and returns a uint32 as texture ID
 func LoadTexture(filename string) uint32 {
 	infile, err := os.Open(filename)
 	if err != nil {
@@ -66,17 +68,20 @@ func LoadTexture(filename string) uint32 {
 	return texture
 }
 
+//Creates and binds a texture ID
 func GenBindTexture() uint32 {
     var texID uint32
     gl.GenTextures(1, &texID)
-    gl.BindTexture(gl.TEXTURE_2D, texID)
+    BindTexture(texID)
     return texID
 }
 
+//Binds a 2D texture ID
 func BindTexture(texID uint32) {
     gl.BindTexture(gl.TEXTURE_2D, texID)
 }
 
+//Create and bind shader program
 func CreateProgram(vertPath, fragPath string) (uint32, error) {
     vertexShader, err := CreateVertexShader(vertPath)
     if err != nil && Verbose {
@@ -110,16 +115,19 @@ func CreateProgram(vertPath, fragPath string) (uint32, error) {
     return ProgramID, err
 }
 
+//Create vertex shader from path to glsl vertex shader source
 func CreateVertexShader(shaderFile string) (uint32, error) {
     ShaderSource := ghf.LoadFile(shaderFile) + "\x00"
     return CreateShader(ShaderSource,  gl.VERTEX_SHADER)
 }
 
+//Create fragment shader from path to glsl fragment shader source
 func CreateFragmentShader(shaderFile string) (uint32, error) {
     ShaderSource := ghf.LoadFile(shaderFile) + "\x00"
     return CreateShader(ShaderSource,  gl.FRAGMENT_SHADER)
 }
 
+//Create shader via shader source file and shader type
 func CreateShader(ShaderSource string, ShaderType uint32) (uint32, error) {
     ShaderID:= gl.CreateShader(ShaderType)
     csource, free := gl.Strs(ShaderSource)
@@ -138,6 +146,7 @@ func CreateShader(ShaderSource string, ShaderType uint32) (uint32, error) {
     return ShaderID, nil 
 }
 
+//Create and init buffer via slice of float32s
 func BufferData[T float32](target uint32, data []T, usage uint32) {
     // switch any(data).(type) {
     // case []float32:
@@ -150,6 +159,7 @@ func BufferData[T float32](target uint32, data []T, usage uint32) {
     gl.BufferData(target, len(data)*4, gl.Ptr(data), usage)
 }
 
+//Generate and bind buffers
 func GenBindBuffers(target uint32) uint32 {
     var buffer uint32
     gl.GenBuffers(1, &buffer)
@@ -157,6 +167,7 @@ func GenBindBuffers(target uint32) uint32 {
     return buffer
 }
 
+//Generate and bind arrays
 func GenBindArrays() uint32 {
     var VAO uint32
     gl.GenVertexArrays(1, &VAO)
