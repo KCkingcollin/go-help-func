@@ -45,13 +45,25 @@ func (shader *ShaderInfo) SetFloat(name string, f float32) {
     gl.Uniform1f(location, f)
 }
 
-// Sends a slice of Mat4s to a uniform buffer (UBO) for use in a block.
-func BindBufferSubDataMat4(split []mgl32.Mat4, UBOn uint32) {
-    for i := range split {
-        v := [16]float32(split[i])
-        gl.BindBuffer(gl.UNIFORM_BUFFER, UBOn)
-        gl.BufferSubData(gl.UNIFORM_BUFFER, i*4*16, 4*16, unsafe.Pointer(&v))
-        gl.BindBuffer(gl.UNIFORM_BUFFER, 1)
+// Sends a generic slice to a uniform buffer (UBO) binding number "n" for use in a shader block.
+func BindBufferSubData[T mgl32.Mat4 | mgl32.Vec3](data []T, UBO, n uint32) {
+    switch data := any(data).(type) {
+    case []mgl32.Mat4:
+        for i := range data {
+            v := [16]float32(data[i])
+            gl.BindBuffer(gl.UNIFORM_BUFFER, UBO)
+            gl.BufferSubData(gl.UNIFORM_BUFFER, i*4*16, 4*16, unsafe.Pointer(&v))
+            gl.BindBuffer(gl.UNIFORM_BUFFER, n)
+        }
+    case []mgl32.Vec3:
+        for i := range data {
+            v := [3]float32(data[i])
+            gl.BindBuffer(gl.UNIFORM_BUFFER, UBO)
+            gl.BufferSubData(gl.UNIFORM_BUFFER, i*4*3, 4*3, unsafe.Pointer(&v))
+            gl.BindBuffer(gl.UNIFORM_BUFFER, n)
+        }
+    default:
+        panic("unsupported type for BufferData")
     }
 }
 

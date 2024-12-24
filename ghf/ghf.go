@@ -30,18 +30,35 @@ func LoadFile(path string) string {
     return string(data)
 }
 
-// Converts a 64Mat4 slice to a 32Mat4 slice
-func Mgl64to32Mat4Slice(m64 []mgl64.Mat4) []mgl32.Mat4 {
-    var ms32 mgl32.Mat4
-    m32 := make([]mgl32.Mat4, len(m64))
-    for i := range m64 {
-        ms64 := [16]float64(m64[i])
-        for j := range ms64 {
-            ms32[j] = float32(ms64[j])
+// Converts a 64 bit mgl slice to a 32 mgl slice
+func Mgl64to32Slice[T mgl64.Mat4 | mgl64.Vec3](data []T) interface{} {
+    switch data := any(data).(type) {
+    case []mgl64.Mat4:
+        var ms32 mgl32.Mat4
+        m32 := make([]mgl32.Mat4, len(data))
+        for i := range data {
+            ms64 := [16]float64(data[i])
+            for j := range ms64 {
+                ms32[j] = float32(ms64[j])
+            }
+            m32[i] = ms32
         }
-        m32[i] = ms32
+        return m32
+
+    case []mgl64.Vec3:
+        var ms32 mgl32.Vec3
+        m32 := make([]mgl32.Vec3, len(data))
+        for i := range data {
+            ms64 := [3]float64(data[i])
+            for j := range ms64 {
+                ms32[j] = float32(ms64[j])
+            }
+            m32[i] = ms32
+        }
+        return m32
+    default:
+        return nil
     }
-    return m32
 }
 
 // Converts a 64Mat4 to a 32Mat4
