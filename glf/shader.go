@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"os"
 	"time"
-	"unsafe"
 
 	"github.com/go-gl/gl/v4.6-core/gl"
-	"github.com/go-gl/mathgl/mgl32"
 )
 
 type ShaderInfo struct {
@@ -34,49 +32,6 @@ func NewShaderProgram(vertexPath, fragmentPath string) (*ShaderInfo, error) {
     result := &ShaderInfo{id, vertexPath, fragmentPath, GetModifiedTime(vertexPath), GetModifiedTime(fragmentPath)}
     loadedShaders[id] = result
     return result, nil
-}
-
-// Unused and will be deleted and deprecated soon.
-//
-// Originally used to set float32 uniform for the shader, but this is NOT forward compatible with vulkan, and is not recommended. 
-// Use BindBufferSubData instead with a uniform block in the shader.
-func (shader *ShaderInfo) SetFloat(name string, f float32) {
-    location := gl.GetUniformLocation(shader.id, gl.Str(name + "\x00"))
-    gl.Uniform1f(location, f)
-}
-
-func (shader *ShaderInfo) SetVec3(name string, v mgl32.Vec3) {
-	name_cstr := gl.Str(name + "\x00")
-	location := gl.GetUniformLocation(uint32(shader.id), name_cstr)
-	v3 := [3]float32(v)
-	gl.Uniform3fv(location, 1, &v3[0])
-}
-
-// Sends a generic slice to a uniform buffer (UBO) for use in a shader block.
-func BindBufferSubData[T mgl32.Mat4 | mgl32.Vec3](data []T, buffer uint32) {
-    switch data := any(data).(type) {
-    case []mgl32.Mat4:
-        for i := range data {
-            v := [16]float32(data[i])
-            gl.BindBuffer(gl.UNIFORM_BUFFER, buffer)
-            gl.BufferSubData(gl.UNIFORM_BUFFER, i*4*16, 4*16, unsafe.Pointer(&v))
-            gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
-        }
-    case []mgl32.Vec3:
-        for i := range data {
-            var v []float32
-            for j := range data[i] {
-                v = append(v, float32(data[i][j]))
-            }
-            v = append(v, 0.0) // glsl only takes in even values 12 bits needs to padded to 16
-            gl.BindBuffer(gl.UNIFORM_BUFFER, buffer)
-            gl.BufferSubData(gl.UNIFORM_BUFFER, i*4*4, 4*4, gl.Ptr(v))
-            gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
-        }
-
-    default:
-        panic("unsupported type for BufferData")
-    }
 }
 
 // Simply uses the given shader program 

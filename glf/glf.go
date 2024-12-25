@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"image/png"
+	"math"
 	"os"
 	"strings"
+	"unsafe"
 
 	"github.com/KCkingcollin/go-help-func/ghf"
 	"github.com/go-gl/gl/v4.6-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 var Verbose bool = ghf.Verbose
@@ -193,4 +196,53 @@ func TriangleNormalCalc(p1, p2, p3 mgl32.Vec3) mgl32.Vec3 {
     vecU := p2.Sub(p1)
     vecV := p3.Sub(p1)
     return vecU.Cross(vecV).Normalize()
+}
+
+// Makes a new uniform buffer on binding (n) set to the type and size of the (data)
+//
+// Returns the uint32 ID of the created buffer
+func CreateNewUniformBuffer[T mgl64.Mat4 | mgl64.Vec3](data []T, n int) uint32 {
+    UBO := GenBindBuffers(gl.UNIFORM_BUFFER)
+    BufferData(gl.UNIFORM_BUFFER, make([]float32, int(math.Round(float64(len(data)*len(data[0])) * 2))), gl.DYNAMIC_DRAW)
+    gl.BindBufferBase(gl.UNIFORM_BUFFER, uint32(n), UBO)
+    return UBO
+}
+
+// Sends a generic slice to a uniform buffer (UBO) for use in a shader block.
+func BindBufferSubData[T mgl32.Mat4 | mgl32.Vec3](data []T, buffer uint32) {
+    switch data := any(data).(type) {
+    case []mgl32.Mat4:
+        for i := range data {
+            v := [16]float32(data[i])
+            gl.BindBuffer(gl.UNIFORM_BUFFER, buffer)
+            gl.BufferSubData(gl.UNIFORM_BUFFER, i*4*16, 4*16, unsafe.Pointer(&v))
+            gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
+        }
+    case []mgl32.Vec3:
+        for i := range data {
+            var v []float32
+            for j := range data[i] {
+                v = append(v, float32(data[i][j]))
+            }
+            v = append(v, 0.0) // glsl only takes in even values 12 bits needs to padded to 16
+            gl.BindBuffer(gl.UNIFORM_BUFFER, buffer)
+            gl.BufferSubData(gl.UNIFORM_BUFFER, i*4*4, 4*4, gl.Ptr(v))
+            gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
+        }
+
+    default:
+        panic("BufferData: unsupported type")
+    }
+}
+
+// Sets the (data) for a given uniform buffer (UBOn)
+func SetUBO[T mgl64.Mat4 | mgl64.Vec3](data []T, UBOn uint32) {
+    switch data := any(data).(type) {
+    case []mgl64.Mat4:
+        BindBufferSubData(ghf.Mgl64to32Slice(data).([]mgl32.Mat4), UBOn)
+    case []mgl64.Vec3:
+        BindBufferSubData(ghf.Mgl64to32Slice(data).([]mgl32.Vec3), UBOn)
+    default:
+        panic("SetUBO: unsupported type")
+    }
 }
