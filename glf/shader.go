@@ -45,23 +45,35 @@ func (shader *ShaderInfo) SetFloat(name string, f float32) {
     gl.Uniform1f(location, f)
 }
 
-// Sends a generic slice to a uniform buffer (UBO) binding number "n" for use in a shader block.
-func BindBufferSubData[T mgl32.Mat4 | mgl32.Vec3](data []T, UBO, n uint32) {
+func (shader *ShaderInfo) SetVec3(name string, v mgl32.Vec3) {
+	name_cstr := gl.Str(name + "\x00")
+	location := gl.GetUniformLocation(uint32(shader.id), name_cstr)
+	v3 := [3]float32(v)
+	gl.Uniform3fv(location, 1, &v3[0])
+}
+
+// Sends a generic slice to a uniform buffer (UBO) for use in a shader block.
+func BindBufferSubData[T mgl32.Mat4 | mgl32.Vec3](data []T, buffer uint32) {
     switch data := any(data).(type) {
     case []mgl32.Mat4:
         for i := range data {
             v := [16]float32(data[i])
-            gl.BindBuffer(gl.UNIFORM_BUFFER, UBO)
+            gl.BindBuffer(gl.UNIFORM_BUFFER, buffer)
             gl.BufferSubData(gl.UNIFORM_BUFFER, i*4*16, 4*16, unsafe.Pointer(&v))
-            gl.BindBuffer(gl.UNIFORM_BUFFER, n)
+            gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
         }
     case []mgl32.Vec3:
         for i := range data {
-            v := [3]float32(data[i])
-            gl.BindBuffer(gl.UNIFORM_BUFFER, UBO)
-            gl.BufferSubData(gl.UNIFORM_BUFFER, i*4*3, 4*3, unsafe.Pointer(&v))
-            gl.BindBuffer(gl.UNIFORM_BUFFER, n)
+            var v []float32
+            for j := range data[i] {
+                v = append(v, float32(data[i][j]))
+            }
+            v = append(v, 0.0) // glsl only takes in even values 12 bits needs to padded to 16
+            gl.BindBuffer(gl.UNIFORM_BUFFER, buffer)
+            gl.BufferSubData(gl.UNIFORM_BUFFER, i*4*4, 4*4, gl.Ptr(v))
+            gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
         }
+
     default:
         panic("unsupported type for BufferData")
     }

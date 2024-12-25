@@ -34,28 +34,29 @@ func LoadFile(path string) string {
 func Mgl64to32Slice[T mgl64.Mat4 | mgl64.Vec3](data []T) interface{} {
     switch data := any(data).(type) {
     case []mgl64.Mat4:
-        var ms32 mgl32.Mat4
-        m32 := make([]mgl32.Mat4, len(data))
+        var m32 mgl32.Mat4
+        ms32 := make([]mgl32.Mat4, len(data))
         for i := range data {
             ms64 := [16]float64(data[i])
             for j := range ms64 {
-                ms32[j] = float32(ms64[j])
+                m32[j] = float32(ms64[j])
             }
-            m32[i] = ms32
+            ms32[i] = m32
         }
-        return m32
+        return ms32
 
     case []mgl64.Vec3:
-        var ms32 mgl32.Vec3
-        m32 := make([]mgl32.Vec3, len(data))
+        var m32 mgl32.Vec3
+        ms32 := make([]mgl32.Vec3, len(data))
         for i := range data {
             ms64 := [3]float64(data[i])
             for j := range ms64 {
-                ms32[j] = float32(ms64[j])
+                m32[j] = float32(ms64[j])
             }
-            m32[i] = ms32
+            ms32[i] = m32
         }
-        return m32
+        return ms32
+
     default:
         return nil
     }

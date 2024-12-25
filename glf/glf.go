@@ -192,5 +192,5 @@ func GenBindVertexArrays() uint32 {
 func TriangleNormalCalc(p1, p2, p3 mgl32.Vec3) mgl32.Vec3 {
     vecU := p2.Sub(p1)
     vecV := p3.Sub(p1)
-    return vecU.Cross(vecV)
+    return vecU.Cross(vecV).Normalize()
 }
