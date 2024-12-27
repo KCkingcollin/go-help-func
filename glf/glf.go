@@ -27,8 +27,8 @@ func PrintVersionGL() {
 }
 
 // Load a RGBA texture file via path, and returns a uint32 as texture ID
-func LoadTexture(filename string) uint32 {
-	infile, err := os.Open(filename)
+func LoadTexture(filePath string) uint32 {
+	infile, err := os.Open(filePath)
 	if err != nil {
 		panic(err)
 	}
@@ -42,18 +42,18 @@ func LoadTexture(filename string) uint32 {
 	w := img.Bounds().Max.X
 	h := img.Bounds().Max.Y
 
-	pixels := make([]byte, w*h*4)
+	pixels := make([]float32, w*h*4)
 	bIndex := 0
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
 			r, g, b, a := img.At(x, y).RGBA()
-			pixels[bIndex] = byte(r / 256)
+			pixels[bIndex] = float32(r) / 65535.0
 			bIndex++
-			pixels[bIndex] = byte(g / 256)
+			pixels[bIndex] = float32(g) / 65535.0
 			bIndex++
-			pixels[bIndex] = byte(b / 256)
+			pixels[bIndex] = float32(b) / 65535.0
 			bIndex++
-			pixels[bIndex] = byte(a / 256)
+			pixels[bIndex] = float32(a) / 65535.0
 			bIndex++
 		}
 	}
@@ -65,7 +65,7 @@ func LoadTexture(filename string) uint32 {
     gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
     
-    gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(w), int32(h), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixels))
+    gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, int32(w), int32(h), 0, gl.RGBA, gl.FLOAT, gl.Ptr(pixels))
 
     gl.GenerateMipmap(gl.TEXTURE_2D)
 
