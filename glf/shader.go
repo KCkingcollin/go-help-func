@@ -3,9 +3,9 @@ package glf
 
 import (
 	"fmt"
-	"os"
 	"time"
 
+	"github.com/KCkingcollin/go-help-func/ghf"
 	"github.com/go-gl/gl/v4.6-core/gl"
 )
 
@@ -29,7 +29,7 @@ func NewShaderProgram(vertexPath, fragmentPath string) (*ShaderInfo, error) {
     if err != nil {
         return nil, err
     }
-    result := &ShaderInfo{id, vertexPath, fragmentPath, GetModifiedTime(vertexPath), GetModifiedTime(fragmentPath)}
+    result := &ShaderInfo{id, vertexPath, fragmentPath, ghf.GetModifiedTime(vertexPath), ghf.GetModifiedTime(fragmentPath)}
     loadedShaders[id] = result
     return result, nil
 }
@@ -39,20 +39,11 @@ func (shader *ShaderInfo) Use() {
     gl.UseProgram(shader.id)
 }
 
-// Gets the modified time of a file path and returns the time as a time.Time
-func GetModifiedTime(filePath string) time.Time {
-        file, err := os.Stat(filePath)
-        if err != nil && Verbose {
-            fmt.Println(err)
-        }
-        return file.ModTime()
-}
-
 // Checks to see if any of the loaded shaders have been modified, and if so recreates the program for that shader.
 func CheckShadersforChanges() {
     for _, shader := range loadedShaders {
-        vertexModTime := GetModifiedTime(shader.vertexPath)
-        fragmentModTime := GetModifiedTime(shader.fragmentPath)
+        vertexModTime := ghf.GetModifiedTime(shader.vertexPath)
+        fragmentModTime := ghf.GetModifiedTime(shader.fragmentPath)
         if !vertexModTime.Equal(shader.vertModified) || 
         !fragmentModTime.Equal(shader.fragModified) {
             fmt.Println("Reloading vertex and fragment shader: \n" + shader.vertexPath + "\n" + shader.fragmentPath)
@@ -61,16 +52,16 @@ func CheckShadersforChanges() {
                 if Verbose {
                     fmt.Printf("Could not relink shader, %s \n", err)
                 }
-                shader.vertModified = GetModifiedTime(shader.vertexPath)
-                shader.fragModified = GetModifiedTime(shader.fragmentPath)
+                shader.vertModified = ghf.GetModifiedTime(shader.vertexPath)
+                shader.fragModified = ghf.GetModifiedTime(shader.fragmentPath)
             } else {
                 if Verbose {
                     fmt.Println("Relinked shader")
                 }
                 gl.DeleteProgram(shader.id)
                 shader.id = id
-                shader.vertModified = GetModifiedTime(shader.vertexPath)
-                shader.fragModified = GetModifiedTime(shader.fragmentPath)
+                shader.vertModified = ghf.GetModifiedTime(shader.vertexPath)
+                shader.fragModified = ghf.GetModifiedTime(shader.fragmentPath)
             }
         }
     }

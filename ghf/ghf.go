@@ -4,6 +4,8 @@ package ghf
 import (
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
@@ -69,4 +71,41 @@ func Mgl64to32Mat4(m64 mgl64.Mat4) mgl32.Mat4 {
         m32[i] = float32(m64[i])
     }
     return mgl32.Mat4(m32)
+}
+
+func ContainsString(filePath, searchString string) bool {
+	// Read the entire file
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+        fmt.Println("failed to read file: ", err)
+		return false 	
+    }
+
+	// Check if the string is in the file
+	return strings.Contains(string(data), searchString)
+}
+
+// Gets the modified time of a file path and returns the time as a time.Time
+func GetModifiedTime(filePath string) time.Time {
+        file, err := os.Stat(filePath)
+        if err != nil && Verbose {
+            fmt.Println(err)
+        }
+        return file.ModTime()
+}
+
+func ReverseMap(original map[string]int) map[int]string {
+    reversed := make(map[int]string)
+    for key, value := range original {
+        reversed[value] = key
+    }
+    return reversed
+}
+
+func FileExists(filePath string) bool {
+	_, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		return false // File does not exist
+	}
+	return err == nil // Return true if no error, false otherwise
 }
