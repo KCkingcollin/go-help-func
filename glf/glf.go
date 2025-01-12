@@ -9,11 +9,13 @@ import (
 	"os"
 	"strings"
 	"unsafe"
+    "log"
 
 	"github.com/KCkingcollin/go-help-func/ghf"
 	"github.com/go-gl/gl/v4.6-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
 var Verbose bool = ghf.Verbose
@@ -245,4 +247,89 @@ func SetUBO[T mgl64.Mat4 | mgl64.Vec3](data []T, UBOn uint32) {
     default:
         panic("SetUBO: unsupported type")
     }
+}
+
+func CreateComputeShader(source string) uint32 {
+	shader := gl.CreateShader(gl.COMPUTE_SHADER)
+	sourceCString, free := gl.Strs(source + "\x00")
+	defer free()
+	gl.ShaderSource(shader, 1, sourceCString, nil)
+	gl.CompileShader(shader)
+
+	var success int32
+	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &success)
+	if success == gl.FALSE {
+		var logLength int32
+		gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &logLength)
+
+		logReturn := string(make([]byte, logLength))
+		gl.GetShaderInfoLog(shader, logLength, nil, gl.Str(logReturn+"\x00"))
+		log.Fatalf("Failed to compile compute shader: %v", logReturn)
+	}
+
+	program := gl.CreateProgram()
+	gl.AttachShader(program, shader)
+	gl.LinkProgram(program)
+	gl.DeleteShader(shader) // Shader can be deleted after linking
+
+	// Log the program ID for debugging purposes
+	log.Printf("Compute Shader Program ID: %d", program)
+	return program
+}
+
+func InitGlfwNoWindow() {
+	if err := glfw.Init(); err != nil {
+		log.Fatalln("Failed to initialize GLFW:", err)
+	}
+
+	glfw.WindowHint(glfw.ContextVersionMajor, 4)
+	glfw.WindowHint(glfw.ContextVersionMinor, 3)
+	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
+	glfw.WindowHint(glfw.Visible, glfw.False) // No window will be shown
+	glfw.WindowHint(glfw.Focused, glfw.False)
+
+	window, err := glfw.CreateWindow(1, 1, "Compute Shader", nil, nil)
+	if err != nil {
+		log.Fatalln("Failed to create GLFW context:", err)
+	}
+	window.MakeContextCurrent()
+}
+
+func InitOpenGL() {
+	if err := gl.Init(); err != nil {
+		log.Fatalln("Failed to initialize OpenGL:", err)
+	}
+	log.Println("OpenGL version:", gl.GoStr(gl.GetString(gl.VERSION)))
+	log.Println("GLSL version:", gl.GoStr(gl.GetString(gl.SHADING_LANGUAGE_VERSION)))
+}
+
+func Computshader(shaderSource string, data []uint32) []uint32 {
+	InitGlfwNoWindow()
+	defer glfw.Terminate()
+	InitOpenGL()
+
+	shaderProgram := CreateComputeShader(shaderSource)
+	defer gl.DeleteProgram(shaderProgram)
+
+	dataSize := len(data) * int(unsafe.Sizeof(data[0]))
+
+	var buffer uint32
+	gl.GenBuffers(1, &buffer)
+	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, buffer)
+	gl.BufferData(gl.SHADER_STORAGE_BUFFER, dataSize, unsafe.Pointer(&data[0]), gl.DYNAMIC_COPY)
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 0, buffer)
+
+	// Execute the compute shader
+	gl.UseProgram(shaderProgram)
+	gl.DispatchCompute(uint32(len(data)), 1, 1)
+	gl.MemoryBarrier(gl.SHADER_STORAGE_BARRIER_BIT)
+
+	// Retrieve the results
+	gl.GetBufferSubData(gl.SHADER_STORAGE_BUFFER, 0, dataSize, unsafe.Pointer(&data[0]))
+	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, 0)
+
+	// Cleanup the buffer
+	gl.DeleteBuffers(1, &buffer)
+
+	return data
 }

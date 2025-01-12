@@ -109,3 +109,4 @@ func FileExists(filePath string) bool {
 	}
 	return err == nil // Return true if no error, false otherwise
 }
+
