@@ -5,17 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"image/png"
+	"io"
+	"log"
 	"math"
 	"os"
 	"strings"
+	"time"
 	"unsafe"
-    "log"
 
 	"github.com/KCkingcollin/go-help-func/ghf"
 	"github.com/go-gl/gl/v4.6-core/gl"
+	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
 var Verbose bool = ghf.Verbose
@@ -249,31 +251,105 @@ func SetUBO[T mgl64.Mat4 | mgl64.Vec3](data []T, UBOn uint32) {
     }
 }
 
-func CreateComputeShader(source string) uint32 {
-	shader := gl.CreateShader(gl.COMPUTE_SHADER)
-	sourceCString, free := gl.Strs(source + "\x00")
-	defer free()
-	gl.ShaderSource(shader, 1, sourceCString, nil)
-	gl.CompileShader(shader)
+func CreateComputeShader(source, sourceFile string) uint32 {
+	var fileChanged bool
+	var savedFileTime int64
+	var program uint32
+    var timeFilePath string = "shaderMod.time"
+    var binaryFile string = "shader.bin"
 
-	var success int32
-	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &success)
-	if success == gl.FALSE {
-		var logLength int32
-		gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &logLength)
+	// Get the source file's modification time
+	fileInfo, err := os.Stat(sourceFile)
+	if err != nil {
+		log.Fatalf("Failed to stat source file: %v", err)
+	}
+	modTime := fileInfo.ModTime().UnixNano()
 
-		logReturn := string(make([]byte, logLength))
-		gl.GetShaderInfoLog(shader, logLength, nil, gl.Str(logReturn+"\x00"))
-		log.Fatalf("Failed to compile compute shader: %v", logReturn)
+	// Open the time file and read the saved modification time
+	timeFile, err := os.Open(timeFilePath)
+	if err == nil {
+		defer timeFile.Close()
+		fmt.Fscanf(timeFile, "%d", &savedFileTime)
+		if modTime != savedFileTime {
+			fileChanged = true
+		}
+	} else if os.IsNotExist(err) {
+		fileChanged = true
+	} else {
+		log.Fatalf("Failed to open time file: %v", err)
 	}
 
-	program := gl.CreateProgram()
-	gl.AttachShader(program, shader)
-	gl.LinkProgram(program)
-	gl.DeleteShader(shader) // Shader can be deleted after linking
+	// Update the time file if the file changed
+	if fileChanged {
+		timeFile, err := os.Create(timeFilePath)
+		if err != nil {
+			log.Fatalf("Failed to create time file: %v", err)
+		}
+		defer timeFile.Close()
+		fmt.Fprintf(timeFile, "%d", modTime)
+	}
 
-	// Log the program ID for debugging purposes
-	log.Printf("Compute Shader Program ID: %d", program)
+	// Shader compilation or binary loading
+	if fileChanged {
+		// Compile the shader
+		source := "#version 460\n..." // Load your shader source here
+		shader := gl.CreateShader(gl.COMPUTE_SHADER)
+		sourceCString, free := gl.Strs(source + "\x00")
+		defer free()
+		gl.ShaderSource(shader, 1, sourceCString, nil)
+		gl.CompileShader(shader)
+
+		var success int32
+		gl.GetShaderiv(shader, gl.COMPILE_STATUS, &success)
+		if success == gl.FALSE {
+			var logLength int32
+			gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &logLength)
+			logMsg := make([]byte, logLength)
+			gl.GetShaderInfoLog(shader, logLength, nil, &logMsg[0])
+			log.Fatalf("Failed to compile compute shader: %v", string(logMsg))
+		}
+
+		program = gl.CreateProgram()
+		gl.AttachShader(program, shader)
+		gl.LinkProgram(program)
+		gl.DeleteShader(shader)
+
+		// Save the program binary
+		var binaryLength int32
+		gl.GetProgramiv(program, gl.PROGRAM_BINARY_LENGTH, &binaryLength)
+		binary := make([]byte, binaryLength)
+		var format uint32
+		gl.GetProgramBinary(program, binaryLength, nil, &format, gl.Ptr(binary))
+
+		binaryFile, err := os.Create(binaryFile)
+		if err != nil {
+			log.Fatalf("Failed to create binary file: %v", err)
+		}
+		defer binaryFile.Close()
+
+		// Save format and binary data
+		fmt.Fprintf(binaryFile, "%d\n", format)
+		binaryFile.Write(binary)
+	} else {
+		// Load the binary shader
+		binaryFile, err := os.Open(binaryFile)
+		if err != nil {
+			log.Fatalf("Failed to open binary file: %v", err)
+		}
+		defer binaryFile.Close()
+
+		// Read format and binary data
+		var format uint32
+		fmt.Fscanf(binaryFile, "%d\n", &format)
+		binary, err := os.ReadFile(binaryFile.Name())
+		if err != nil {
+			log.Fatalf("Failed to read binary shader: %v", err)
+		}
+
+		program = gl.CreateProgram()
+		gl.ProgramBinary(program, format, gl.Ptr(binary[4:]), int32(len(binary[4:])))
+	}
+
 	return program
 }
 
@@ -299,16 +375,14 @@ func InitOpenGL() {
 	if err := gl.Init(); err != nil {
 		log.Fatalln("Failed to initialize OpenGL:", err)
 	}
-	log.Println("OpenGL version:", gl.GoStr(gl.GetString(gl.VERSION)))
-	log.Println("GLSL version:", gl.GoStr(gl.GetString(gl.SHADING_LANGUAGE_VERSION)))
 }
 
-func Computshader(shaderSource string, data []uint32) []uint32 {
+func Computshader(shaderSource, sourceFile string, data []uint32) []uint32 {
 	InitGlfwNoWindow()
 	defer glfw.Terminate()
 	InitOpenGL()
 
-	shaderProgram := CreateComputeShader(shaderSource)
+	shaderProgram := CreateComputeShader(shaderSource, sourceFile)
 	defer gl.DeleteProgram(shaderProgram)
 
 	dataSize := len(data) * int(unsafe.Sizeof(data[0]))
