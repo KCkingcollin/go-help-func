@@ -5,12 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"image/png"
-	"io"
 	"log"
 	"math"
 	"os"
 	"strings"
-	"time"
 	"unsafe"
 
 	"github.com/KCkingcollin/go-help-func/ghf"
