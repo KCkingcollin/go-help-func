@@ -250,9 +250,9 @@ func SetUBO[T mgl64.Mat4 | mgl64.Vec3](data []T, UBOn uint32) {
 }
 
 func CreateComputeShader(source, sourceFile string) uint32 {
-	var fileChanged bool
-	var savedFileTime int64
-	var program uint32
+    var fileChanged bool
+    var savedFileTime int64
+    var program uint32
     var timeFilePath string = "shaderMod.time"
     var binaryFile string = "shader.bin"
 
@@ -290,7 +290,6 @@ func CreateComputeShader(source, sourceFile string) uint32 {
 	// Shader compilation or binary loading
 	if fileChanged {
 		// Compile the shader
-		source := "#version 460\n..." // Load your shader source here
 		shader := gl.CreateShader(gl.COMPUTE_SHADER)
 		sourceCString, free := gl.Strs(source + "\x00")
 		defer free()
@@ -326,8 +325,12 @@ func CreateComputeShader(source, sourceFile string) uint32 {
 		defer binaryFile.Close()
 
 		// Save format and binary data
-		fmt.Fprintf(binaryFile, "%d\n", format)
-		binaryFile.Write(binary)
+		// Store the format at the start of the file, followed by the binary data
+		binaryData := append([]byte(fmt.Sprintf("%d\n", format)), binary...)
+		_, err = binaryFile.Write(binaryData)
+		if err != nil {
+			log.Fatalf("Failed to write binary shader: %v", err)
+		}
 	} else {
 		// Load the binary shader
 		binaryFile, err := os.Open(binaryFile)
@@ -338,14 +341,20 @@ func CreateComputeShader(source, sourceFile string) uint32 {
 
 		// Read format and binary data
 		var format uint32
-		fmt.Fscanf(binaryFile, "%d\n", &format)
-		binary, err := os.ReadFile(binaryFile.Name())
+		_, err = fmt.Fscanf(binaryFile, "%d\n", &format)
 		if err != nil {
-			log.Fatalf("Failed to read binary shader: %v", err)
+			log.Fatalf("Failed to read shader format: %v", err)
 		}
 
+		// Read the binary shader (skip format part)
+		binary, err := os.ReadFile(binaryFile.Name())
+		if err != nil {
+			log.Fatalf("Failed to read shader binary: %v", err)
+		}
+		binary = binary[1:] // Skip the format part
+
 		program = gl.CreateProgram()
-		gl.ProgramBinary(program, format, gl.Ptr(binary[4:]), int32(len(binary[4:])))
+		gl.ProgramBinary(program, format, gl.Ptr(binary), int32(len(binary)))
 	}
 
 	return program
