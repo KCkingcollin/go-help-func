@@ -250,114 +250,24 @@ func SetUBO[T mgl64.Mat4 | mgl64.Vec3](data []T, UBOn uint32) {
 }
 
 func CreateComputeShader(source, sourceFile string) uint32 {
-    var fileChanged bool
-    var savedFileTime int64
-    var program uint32
-    var timeFilePath string = "shaderMod.time"
-    var binaryFile string = "shader.bin"
+	var program uint32
 
-	// Get the source file's modification time
-	fileInfo, err := os.Stat(sourceFile)
-	if err != nil {
-		log.Fatalf("Failed to stat source file: %v", err)
-	}
-	modTime := fileInfo.ModTime().UnixNano()
+    // Compile the shader
+    shader := gl.CreateShader(gl.COMPUTE_SHADER)
+    sourceCString, free := gl.Strs(source + "\x00")
+    defer free()
+    gl.ShaderSource(shader, 1, sourceCString, nil)
+    gl.CompileShader(shader)
 
-	// Open the time file and read the saved modification time
-	timeFile, err := os.Open(timeFilePath)
-	if err == nil {
-		defer timeFile.Close()
-		fmt.Fscanf(timeFile, "%d", &savedFileTime)
-		if modTime != savedFileTime {
-			fileChanged = true
-		}
-	} else if os.IsNotExist(err) {
-		fileChanged = true
-	} else {
-		log.Fatalf("Failed to open time file: %v", err)
-	}
+    var success int32
+    gl.GetShaderiv(shader, gl.COMPILE_STATUS, &success)
 
-	// Update the time file if the file changed
-	if fileChanged {
-		timeFile, err := os.Create(timeFilePath)
-		if err != nil {
-			log.Fatalf("Failed to create time file: %v", err)
-		}
-		defer timeFile.Close()
-		fmt.Fprintf(timeFile, "%d", modTime)
-	}
+    program = gl.CreateProgram()
+    gl.AttachShader(program, shader)
+    gl.LinkProgram(program)
+    gl.DeleteShader(shader)
 
-	// Shader compilation or binary loading
-	if fileChanged {
-		// Compile the shader
-		shader := gl.CreateShader(gl.COMPUTE_SHADER)
-		sourceCString, free := gl.Strs(source + "\x00")
-		defer free()
-		gl.ShaderSource(shader, 1, sourceCString, nil)
-		gl.CompileShader(shader)
-
-		var success int32
-		gl.GetShaderiv(shader, gl.COMPILE_STATUS, &success)
-		if success == gl.FALSE {
-			var logLength int32
-			gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &logLength)
-			logMsg := make([]byte, logLength)
-			gl.GetShaderInfoLog(shader, logLength, nil, &logMsg[0])
-			log.Fatalf("Failed to compile compute shader: %v", string(logMsg))
-		}
-
-		program = gl.CreateProgram()
-		gl.AttachShader(program, shader)
-		gl.LinkProgram(program)
-		gl.DeleteShader(shader)
-
-		// Save the program binary
-		var binaryLength int32
-		gl.GetProgramiv(program, gl.PROGRAM_BINARY_LENGTH, &binaryLength)
-		binary := make([]byte, binaryLength)
-		var format uint32
-		gl.GetProgramBinary(program, binaryLength, nil, &format, gl.Ptr(binary))
-
-		binaryFile, err := os.Create(binaryFile)
-		if err != nil {
-			log.Fatalf("Failed to create binary file: %v", err)
-		}
-		defer binaryFile.Close()
-
-		// Save format and binary data
-		// Store the format at the start of the file, followed by the binary data
-		binaryData := append([]byte(fmt.Sprintf("%d\n", format)), binary...)
-		_, err = binaryFile.Write(binaryData)
-		if err != nil {
-			log.Fatalf("Failed to write binary shader: %v", err)
-		}
-	} else {
-		// Load the binary shader
-		binaryFile, err := os.Open(binaryFile)
-		if err != nil {
-			log.Fatalf("Failed to open binary file: %v", err)
-		}
-		defer binaryFile.Close()
-
-		// Read format and binary data
-		var format uint32
-		_, err = fmt.Fscanf(binaryFile, "%d\n", &format)
-		if err != nil {
-			log.Fatalf("Failed to read shader format: %v", err)
-		}
-
-		// Read the binary shader (skip format part)
-		binary, err := os.ReadFile(binaryFile.Name())
-		if err != nil {
-			log.Fatalf("Failed to read shader binary: %v", err)
-		}
-		binary = binary[1:] // Skip the format part
-
-		program = gl.CreateProgram()
-		gl.ProgramBinary(program, format, gl.Ptr(binary), int32(len(binary)))
-	}
-
-	return program
+    return program
 }
 
 func InitGlfwNoWindow() {
@@ -384,7 +294,10 @@ func InitOpenGL() {
 	}
 }
 
-func Computshader(shaderSource, sourceFile string, data []uint32) []uint32 {
+func ComputeShader(shaderSource, sourceFile string, data []uint32) ([]uint32, bool) {
+    if len(data) == 0 {
+        return nil, true
+    }
 	InitGlfwNoWindow()
 	defer glfw.Terminate()
 	InitOpenGL()
@@ -394,15 +307,21 @@ func Computshader(shaderSource, sourceFile string, data []uint32) []uint32 {
 
 	dataSize := len(data) * int(unsafe.Sizeof(data[0]))
 
+	// Create buffer and bind data
 	var buffer uint32
 	gl.GenBuffers(1, &buffer)
 	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, buffer)
 	gl.BufferData(gl.SHADER_STORAGE_BUFFER, dataSize, unsafe.Pointer(&data[0]), gl.DYNAMIC_COPY)
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 0, buffer)
 
+	// Calculate number of workgroups
+	numWorkgroups := uint32(len(data)) // One workgroup per element
+
 	// Execute the compute shader
 	gl.UseProgram(shaderProgram)
-	gl.DispatchCompute(uint32(len(data)), 1, 1)
+	gl.DispatchCompute(numWorkgroups, 1, 1)
+
+	// Ensure the compute shader has finished before reading the data
 	gl.MemoryBarrier(gl.SHADER_STORAGE_BARRIER_BIT)
 
 	// Retrieve the results
@@ -412,5 +331,5 @@ func Computshader(shaderSource, sourceFile string, data []uint32) []uint32 {
 	// Cleanup the buffer
 	gl.DeleteBuffers(1, &buffer)
 
-	return data
+	return data, false
 }
