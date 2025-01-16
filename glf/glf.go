@@ -13,9 +13,9 @@ import (
 
 	"github.com/KCkingcollin/go-help-func/ghf"
 	"github.com/go-gl/gl/v4.6-core/gl"
-	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 var Verbose bool = ghf.Verbose
@@ -251,56 +251,93 @@ func SetUBO[T mgl64.Mat4 | mgl64.Vec3](data []T, UBOn uint32) {
 
 func CreateComputeShader(source, sourceFile string) uint32 {
 	var program uint32
-
     // Compile the shader
     shader := gl.CreateShader(gl.COMPUTE_SHADER)
+    if shader == 0 {
+        log.Fatalf("Failed to create shader")
+    }
+
     sourceCString, free := gl.Strs(source + "\x00")
     defer free()
     gl.ShaderSource(shader, 1, sourceCString, nil)
     gl.CompileShader(shader)
 
+    // Check shader compilation status
     var success int32
     gl.GetShaderiv(shader, gl.COMPILE_STATUS, &success)
+    if success == gl.FALSE {
+        var logLength int32
+        gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &logLength)
+
+        logMsg := make([]byte, logLength)
+        gl.GetShaderInfoLog(shader, logLength, nil, &logMsg[0])
+        log.Fatalf("Shader compilation failed: %s", string(logMsg))
+    }
 
     program = gl.CreateProgram()
+    if program == 0 {
+        log.Fatalf("Failed to create program")
+    }
     gl.AttachShader(program, shader)
     gl.LinkProgram(program)
+
+    // Check program link status
+    var linkSuccess int32
+    gl.GetProgramiv(program, gl.LINK_STATUS, &linkSuccess)
+    if linkSuccess == gl.FALSE {
+        var logLength int32
+        gl.GetProgramiv(program, gl.INFO_LOG_LENGTH, &logLength)
+
+        logMsg := make([]byte, logLength)
+        gl.GetProgramInfoLog(program, logLength, nil, &logMsg[0])
+        log.Fatalf("Program linking failed: %s", string(logMsg))
+    }
+
     gl.DeleteShader(shader)
 
     return program
 }
 
-func InitGlfwNoWindow() {
-	if err := glfw.Init(); err != nil {
-		log.Fatalln("Failed to initialize GLFW:", err)
+func InitGlfwNoWindow() (*sdl.Window, sdl.GLContext) {
+	// Initialize SDL2
+	if err := sdl.Init(sdl.INIT_VIDEO); err != nil {
+		log.Fatalf("Failed to initialize SDL: %v", err)
+	}
+	if err := sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 4); err != nil {
+		log.Fatalf("Failed to set OpenGL major version: %v", err)
+	}
+	if err := sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 3); err != nil {
+		log.Fatalf("Failed to set OpenGL minor version: %v", err)
+	}
+	if err := sdl.GLSetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE); err != nil {
+		log.Fatalf("Failed to set OpenGL core profile: %v", err)
 	}
 
-	glfw.WindowHint(glfw.ContextVersionMajor, 4)
-	glfw.WindowHint(glfw.ContextVersionMinor, 3)
-	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
-	glfw.WindowHint(glfw.Visible, glfw.False) // No window will be shown
-	glfw.WindowHint(glfw.Focused, glfw.False)
-
-	window, err := glfw.CreateWindow(1, 1, "Compute Shader", nil, nil)
+	window, err := sdl.CreateWindow("Compute Shader", 0, 0, 1, 1, sdl.WINDOW_OPENGL|sdl.WINDOW_HIDDEN)
 	if err != nil {
-		log.Fatalln("Failed to create GLFW context:", err)
+		log.Fatalf("Failed to create SDL window: %v", err)
 	}
-	window.MakeContextCurrent()
-}
 
-func InitOpenGL() {
+	glContext, err := window.GLCreateContext()
+	if err != nil {
+		log.Fatalf("Failed to create OpenGL context: %v", err)
+	}
+
 	if err := gl.Init(); err != nil {
-		log.Fatalln("Failed to initialize OpenGL:", err)
+		log.Fatalf("Failed to initialize OpenGL: %v", err)
 	}
+
+    return window, glContext
 }
 
-func ComputeShader(shaderSource, sourceFile string, data []uint32) ([]uint32, bool) {
-    if len(data) == 0 {
-        return nil, true
+func ComputeShader(shaderSource, sourceFile string, data []uint32) []uint32 {
+    window, GLContext := InitGlfwNoWindow()
+	defer sdl.GLDeleteContext(GLContext)
+    defer sdl.Quit()
+	defer window.Destroy()
+    if err := gl.Init(); err != nil {
+        log.Fatalln("Failed to initialize OpenGL:", err)
     }
-	InitGlfwNoWindow()
-	defer glfw.Terminate()
-	InitOpenGL()
 
 	shaderProgram := CreateComputeShader(shaderSource, sourceFile)
 	defer gl.DeleteProgram(shaderProgram)
@@ -331,5 +368,5 @@ func ComputeShader(shaderSource, sourceFile string, data []uint32) ([]uint32, bo
 	// Cleanup the buffer
 	gl.DeleteBuffers(1, &buffer)
 
-	return data, false
+	return data
 }
