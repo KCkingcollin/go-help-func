@@ -20,6 +20,13 @@ import (
 
 var Verbose bool = ghf.Verbose
 
+// ShaderManager holds reusable resources for compute shader execution
+type ShaderManager struct {
+	Window         *sdl.Window
+	GLContext      sdl.GLContext
+	ShaderProgram  uint32
+}
+
 // Prints OpenGL version information
 func PrintVersionGL() {
     version := gl.GoStr(gl.GetString(gl.VERSION))
@@ -298,7 +305,7 @@ func CreateComputeShader(source, sourceFile string) uint32 {
     return program
 }
 
-func InitGlfwNoWindow() (*sdl.Window, sdl.GLContext) {
+func InitSdlNoWindow() (*sdl.Window, sdl.GLContext) {
 	// Initialize SDL2
 	if err := sdl.Init(sdl.INIT_VIDEO); err != nil {
 		log.Fatalf("Failed to initialize SDL: %v", err)
@@ -330,18 +337,32 @@ func InitGlfwNoWindow() (*sdl.Window, sdl.GLContext) {
     return window, glContext
 }
 
-func ComputeShader(shaderSource, sourceFile string, data []uint32) []uint32 {
-    window, GLContext := InitGlfwNoWindow()
-	defer sdl.GLDeleteContext(GLContext)
-    defer sdl.Quit()
-	defer window.Destroy()
-    if err := gl.Init(); err != nil {
-        log.Fatalln("Failed to initialize OpenGL:", err)
-    }
+// InitShaderManager initializes SDL, OpenGL, and compiles the shader
+func InitShaderManager(shaderSource, sourceFile string) *ShaderManager {
+	window, GLContext := InitSdlNoWindow()
+	if err := gl.Init(); err != nil {
+		log.Fatalln("Failed to initialize OpenGL:", err)
+	}
 
 	shaderProgram := CreateComputeShader(shaderSource, sourceFile)
-	defer gl.DeleteProgram(shaderProgram)
 
+	return &ShaderManager{
+		Window:        window,
+		GLContext:     GLContext,
+		ShaderProgram: shaderProgram,
+	}
+}
+
+// Cleanup releases all resources used by the ShaderManager
+func (sm *ShaderManager) Cleanup() {
+	gl.DeleteProgram(sm.ShaderProgram)
+	sdl.GLDeleteContext(sm.GLContext)
+	sm.Window.Destroy()
+	sdl.Quit()
+}
+
+// Execute runs the compute shader with the provided data
+func (sm *ShaderManager) Execute(data []uint32) []uint32 {
 	dataSize := len(data) * int(unsafe.Sizeof(data[0]))
 
 	// Create buffer and bind data
@@ -355,7 +376,7 @@ func ComputeShader(shaderSource, sourceFile string, data []uint32) []uint32 {
 	numWorkgroups := uint32(len(data)) // One workgroup per element
 
 	// Execute the compute shader
-	gl.UseProgram(shaderProgram)
+	gl.UseProgram(sm.ShaderProgram)
 	gl.DispatchCompute(numWorkgroups, 1, 1)
 
 	// Ensure the compute shader has finished before reading the data
@@ -370,3 +391,4 @@ func ComputeShader(shaderSource, sourceFile string, data []uint32) []uint32 {
 
 	return data
 }
+
