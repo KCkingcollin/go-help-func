@@ -377,7 +377,9 @@ func (sm *ShaderManager) Execute(data []uint32, sizeWorkGP... int) []uint32 {
     if len(sizeWorkGP) > 0 {
         workGroupSize = sizeWorkGP[0]
     } else {
-        workGroupSize = 1
+        var size int32
+        gl.GetIntegeri_v(gl.MAX_COMPUTE_WORK_GROUP_SIZE, 0, &size)
+        workGroupSize = int(size)
     }
     numWorkgroups := uint32((len(data) + workGroupSize - 1) / workGroupSize)
 
