@@ -362,7 +362,7 @@ func (sm *ShaderManager) Cleanup() {
 }
 
 // Execute runs the compute shader with the provided data
-func (sm *ShaderManager) Execute(data []uint32) []uint32 {
+func (sm *ShaderManager) Execute(data []uint32, sizeWorkGP... int) []uint32 {
 	dataSize := len(data) * int(unsafe.Sizeof(data[0]))
 
 	// Create buffer and bind data
@@ -373,7 +373,11 @@ func (sm *ShaderManager) Execute(data []uint32) []uint32 {
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 0, buffer)
 
 	// Calculate number of workgroups
-	numWorkgroups := uint32(len(data)) // One workgroup per element
+    var workGroupSize int
+    if len(sizeWorkGP) > 0 {
+        workGroupSize = sizeWorkGP[0]
+    }
+    numWorkgroups := uint32((len(data) + workGroupSize - 1) / workGroupSize)
 
 	// Execute the compute shader
 	gl.UseProgram(sm.ShaderProgram)
