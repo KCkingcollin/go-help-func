@@ -21,7 +21,7 @@ import (
 var Verbose bool = ghf.Verbose
 
 // ShaderManager holds reusable resources for compute shader execution
-type ShaderManager struct {
+type ShaderManager[T int32 | float64 | uint32 | mgl32.Vec4] struct {
 	Window         *sdl.Window
 	GLContext      sdl.GLContext
 	ShaderProgram  uint32
@@ -338,7 +338,7 @@ func InitSdlNoWindow() (*sdl.Window, sdl.GLContext) {
 }
 
 // InitShaderManager initializes SDL, OpenGL, and compiles the shader
-func InitShaderManager(shaderSource, sourceFile string) *ShaderManager {
+func InitShaderManager(shaderSource, sourceFile string) *ShaderManager[int32] {
 	window, GLContext := InitSdlNoWindow()
 	if err := gl.Init(); err != nil {
 		log.Fatalln("Failed to initialize OpenGL:", err)
@@ -346,15 +346,63 @@ func InitShaderManager(shaderSource, sourceFile string) *ShaderManager {
 
 	shaderProgram := CreateComputeShader(shaderSource, sourceFile)
 
-	return &ShaderManager{
+	return &ShaderManager[int32]{
 		Window:        window,
 		GLContext:     GLContext,
 		ShaderProgram: shaderProgram,
 	}
 }
 
+// InitShaderManager initializes SDL, OpenGL, and compiles the shader
+func InitShaderManagerFloat(shaderSource, sourceFile string) *ShaderManager[float64] {
+	window, GLContext := InitSdlNoWindow()
+	if err := gl.Init(); err != nil {
+		log.Fatalln("Failed to initialize OpenGL:", err)
+	}
+
+	shaderProgram := CreateComputeShader(shaderSource, sourceFile)
+
+	return &ShaderManager[float64]{
+		Window:        window,
+		GLContext:     GLContext,
+		ShaderProgram: shaderProgram,
+	}
+}
+
+// InitShaderManager initializes SDL, OpenGL, and compiles the shader
+func InitShaderManagerUint(shaderSource, sourceFile string) *ShaderManager[uint32] {
+    window, GLContext := InitSdlNoWindow()
+    if err := gl.Init(); err != nil {
+        log.Fatalln("Failed to initialize OpenGL:", err)
+    }
+
+    shaderProgram := CreateComputeShader(shaderSource, sourceFile)
+
+    return &ShaderManager[uint32]{
+        Window:        window,
+        GLContext:     GLContext,
+        ShaderProgram: shaderProgram,
+    }
+}
+
+// InitShaderManager initializes SDL, OpenGL, and compiles the shader
+func InitShaderManagerVec3(shaderSource, sourceFile string) *ShaderManager[mgl32.Vec4] {
+    window, GLContext := InitSdlNoWindow()
+    if err := gl.Init(); err != nil {
+        log.Fatalln("Failed to initialize OpenGL:", err)
+    }
+
+    shaderProgram := CreateComputeShader(shaderSource, sourceFile)
+
+    return &ShaderManager[mgl32.Vec4]{
+        Window:        window,
+        GLContext:     GLContext,
+        ShaderProgram: shaderProgram,
+    }
+}
+
 // Cleanup releases all resources used by the ShaderManager
-func (sm *ShaderManager) Cleanup() {
+func (sm *ShaderManager[T]) Cleanup() {
 	gl.DeleteProgram(sm.ShaderProgram)
 	sdl.GLDeleteContext(sm.GLContext)
 	sm.Window.Destroy()
@@ -362,15 +410,24 @@ func (sm *ShaderManager) Cleanup() {
 }
 
 // Execute runs the compute shader with the provided data
-func (sm *ShaderManager) Execute(data []uint32, sizeWorkGP... int) []uint32 {
+func (sm *ShaderManager[T]) Execute(data []T, sizeWorkGP ...int) []T {
+
 	dataSize := len(data) * int(unsafe.Sizeof(data[0]))
 
 	// Create buffer and bind data
-	var buffer uint32
-	gl.GenBuffers(1, &buffer)
-	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, buffer)
+	var inputBuffer uint32
+	gl.GenBuffers(1, &inputBuffer)
+	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, inputBuffer)
 	gl.BufferData(gl.SHADER_STORAGE_BUFFER, dataSize, unsafe.Pointer(&data[0]), gl.DYNAMIC_COPY)
-	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 0, buffer)
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 0, inputBuffer)
+
+	//    var output[] float64 = make([]float64, len(data))
+	//    dataSize = len(data) * int(unsafe.Sizeof(output[0]))
+	// var outputBuffer uint32
+	// gl.GenBuffers(1, &outputBuffer)
+	// gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, outputBuffer)
+	// gl.BufferData(gl.SHADER_STORAGE_BUFFER, dataSize, unsafe.Pointer(&output[0]), gl.DYNAMIC_COPY)
+	// gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 1, outputBuffer)
 
 	// Calculate number of workgroups
     var workGroupSize int
@@ -387,15 +444,20 @@ func (sm *ShaderManager) Execute(data []uint32, sizeWorkGP... int) []uint32 {
 	gl.UseProgram(sm.ShaderProgram)
 	gl.DispatchCompute(numWorkgroups, 1, 1)
 
-	// Ensure the compute shader has finished before reading the data
-	gl.MemoryBarrier(gl.SHADER_STORAGE_BARRIER_BIT)
+    // Ensure the compute shader has finished before reading the data
+    gl.MemoryBarrier(gl.SHADER_STORAGE_BARRIER_BIT)
 
 	// Retrieve the results
 	gl.GetBufferSubData(gl.SHADER_STORAGE_BUFFER, 0, dataSize, unsafe.Pointer(&data[0]))
 	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, 0)
 
+	// // Retrieve the results
+	// gl.GetBufferSubData(gl.SHADER_STORAGE_BUFFER, 1, dataSize, unsafe.Pointer(&output[0]))
+	// gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, 0)
+
 	// Cleanup the buffer
-	gl.DeleteBuffers(1, &buffer)
+    gl.DeleteBuffers(1, &inputBuffer)
+	// gl.DeleteBuffers(1, &outputBuffer)
 
 	return data
 }
